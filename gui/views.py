@@ -10,7 +10,7 @@ class App(ctk.CTk):
         self.title("Парсер шин")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1,weight=1)
-        self.resizable(0,0)
+        self.resizable(0,1)
 
     def start_button_callbck(self):
         print("Обработка началась...\n\n")
@@ -33,11 +33,10 @@ class CheckboxFrame(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.values = values
         self.title = title
-        self.winfo_height = 200
 
         self.checkboxes = []
 
-        self.title = ctk.CTkLabel(self, text=self.title, fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=20))
+        self.title = ctk.CTkLabel(self, text=self.title, fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=18))
         self.title.grid(row=0, column=0, padx=10, pady=(10, 10), sticky="ew")
 
         for i, value in enumerate(self.values):
@@ -66,7 +65,7 @@ class CheckboxFrame(ctk.CTkFrame):
             if checkbox.get() == 1:
                 checked_checkboxes.append(checkbox.cget("text"))
         return checked_checkboxes
-
+    
 class ButtonFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
@@ -85,9 +84,9 @@ class ButtonFrame(ctk.CTkFrame):
 class LogsFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        self.grid_columnconfigure(0, weight=2)
+        self.grid_columnconfigure(0, weight=1)
 
-        self.label = ctk.CTkLabel(self, text="Логи", fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=20))
+        self.label = ctk.CTkLabel(self, text="Логи", fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=18))
         self.label.grid(row=0, sticky="nsew", pady=10, padx=10)
 
         self.tk_textbox = ctk.CTkTextbox(self, activate_scrollbars=True, width=550, height=280)
