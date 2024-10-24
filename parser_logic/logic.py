@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import random
 import re
 import xml.etree.ElementTree as ET
+from .checkpoint import *
 
 def load_proxies(file_path):
     with open(file_path, 'r') as f:
@@ -176,3 +177,45 @@ def already_processed(brand, model, previous_results):
         if result['Название шины'] == f"{brand} {model}":
             return True
     return False
+
+def processing():
+    previous_results = load_previous_results()
+    if previous_results:
+        global results
+        results = previous_results
+    
+    tires = parse_xml('files/tires.xml')
+    proxies = load_proxies('files/proxies.txt')
+
+    for tire in tires:
+        brand = tire['brand']
+        model = tire['product']
+
+        if not model:
+            print(f"Обнаружено отсутствие модели для бренда: {brand}")
+            continue
+
+        if already_processed(brand, model, previous_results):
+            print(f"Шина {brand} {model} уже обработана, пропускаем...")
+            continue
+
+        description_drom = get_tyre_description_drom(brand, model, proxies)
+        print(f"Описание с drom.ru для {brand} {model}: {description_drom}")
+        
+        results.append({
+            'Название шины': f"{brand} {model}",
+            'Описание drom.ru': description_drom,
+            'Описание mosautoshina.ru': ''
+        })
+        save_results()
+
+        description_mosautoshina = get_tyre_description_mosautoshina(brand, model, proxies)
+        print(f"Описание с mosautoshina.ru для {brand} {model}: {description_mosautoshina}")
+
+        for result in results:
+            if result['Название шины'] == f"{brand} {model}":
+                result['Описание mosautoshina.ru'] = description_mosautoshina
+
+        save_results()
+
+    print("Все данные успешно обработаны и сохранены.")
