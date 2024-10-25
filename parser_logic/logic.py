@@ -23,9 +23,9 @@ def parse_with_requests(url, proxies, app_instance):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0"
     }
-    message = f"\n\nПарсинг сайта: {url} с прокси: {proxy}"
+    message = f"\nПарсинг сайта: {url} с прокси: {proxy}\n"
     print(message)
-    app_instance.log_queue.put(message)
+    app_instance.log_queue.put((message, "Black", 'normal'))
 
     try:
         response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
@@ -58,7 +58,7 @@ def find_best_match(model, tyre_items, app_instance):
                 best_match = link['href']
                 message =f"Найдена модель: {tyre_name} с {matches} совпадениями."
                 print(message)
-                app_instance.log_queue.put(message)
+                app_instance.log_queue.put((message, "LimeGreen", 'normal'))
 
     return best_match if highest_count >= 1 else None
 
@@ -121,7 +121,7 @@ def find_best_match_mosautoshina(model, tyre_items, app_instance):
                 best_match = 'https://mosautoshina.ru' + link['href']
                 message = f"Найдена модель: {tyre_name} с {matches} совпадениями."
                 print(message)
-                app_instance.log_queue.put(message)
+                app_instance.log_queue.put((message, "LimeGreen", 'normal'))
 
     return best_match if highest_count >= 1 else None
 
@@ -185,7 +185,7 @@ def already_processed(brand, model, previous_results):
     return False
 
 def processing(log_queue, app_instance):
-    log_queue.put("Процесс парсинга начался...\n")
+    log_queue.put(("Процесс парсинга начался...\n", "Green", 'bold'))
     previous_results = load_previous_results(log_queue)
     if previous_results:
         global results
@@ -196,7 +196,8 @@ def processing(log_queue, app_instance):
 
     for tire in tires:
         if not app_instance.is_running:
-            log_queue.put("Обработка остановлена.")
+            message="Обработка остановлена."
+            log_queue.put((message, "DarkOrange", 'normal'))
             break
         brand = tire['brand']
         model = tire['product']
@@ -204,19 +205,19 @@ def processing(log_queue, app_instance):
         if not model:
             message = f"Обнаружено отсутствие модели для бренда: {brand}"
             print(message)
-            log_queue.put(message)
+            log_queue.put((message, "DarkOrange", 'normal'))
             continue
 
         if already_processed(brand, model, previous_results):
             message = f"Шина {brand} {model} уже обработана, пропускаем..."
             print(message)
-            log_queue.put(message)
+            log_queue.put((message, "DarkOrange", 'normal'))
             continue
 
         description_drom = get_tyre_description_drom(brand, model, proxies, app_instance)
         message = f"Описание с drom.ru для {brand} {model}: {description_drom}"
         print(message)
-        log_queue.put(message)
+        log_queue.put((message, "Black", 'normal'))
         
         results.append({
             'Название шины': f"{brand} {model}",
@@ -228,12 +229,14 @@ def processing(log_queue, app_instance):
         description_mosautoshina = get_tyre_description_mosautoshina(brand, model, proxies, app_instance)
         message = f"Описание с mosautoshina.ru для {brand} {model}: {description_mosautoshina}"
         print(message)
-        log_queue.put(message)
+        log_queue.put((message, "Black", 'normal'))
 
         for result in results:
             if result['Название шины'] == f"{brand} {model}":
                 result['Описание mosautoshina.ru'] = description_mosautoshina
 
         save_results(results, log_queue)
-
-    print("Все данные успешно обработаны и сохранены.")
+    
+    message = "\nВсе данные успешно обработаны и сохранены.\n_______________________________________________________________________\n"
+    log_queue.put((message, "LimeGreen", 'normal'))
+    print(message)

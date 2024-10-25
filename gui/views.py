@@ -3,6 +3,7 @@ from CustomTkinterMessagebox import CTkMessagebox as mb
 from parser_logic import logic
 import queue
 import threading
+import tkinter as tk
 
 class ToplevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text):
@@ -15,22 +16,32 @@ class CheckboxFrame(ctk.CTkFrame):
     def __init__(self, master, title, values, app_instance):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
+        #self.configure(fg_color="transparent")
         self.values = values
         self.title = title
 
         self.checkboxes = []
         self.app_instance = app_instance
 
-        self.title = ctk.CTkLabel(self, text=self.title, fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=18))
-        self.title.grid(row=0, column=0, padx=10, pady=(10, 10), sticky="ew")
+        self.title = ctk.CTkLabel(self, text=self.title, fg_color="#2cc985", text_color="Black", corner_radius=6, font=ctk.CTkFont(size=16))
+        self.title.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
         for i, value in enumerate(self.values):
-            checkbox = ctk.CTkCheckBox(self, text=value, font=ctk.CTkFont(size=14))
-            checkbox.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="w")
+            checkbox = ctk.CTkCheckBox(self, text=value, font=ctk.CTkFont(size=12))
+            checkbox.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
             self.checkboxes.append(checkbox)
         
-        self.apply_button = ctk.CTkButton(self, text="Применить настройки", command=self.app_instance.apply_button_callbck, font=ctk.CTkFont(size=14), text_color="Black", fg_color="White", hover_color="DarkGray",)
-        self.apply_button.grid(row=5, column=0, padx=10, pady=(155,0))
+        self.apply_button = ctk.CTkButton(self, 
+                                          text="Применить", 
+                                          command=self.app_instance.apply_button_callbck, 
+                                          font=ctk.CTkFont(size=14), 
+                                          text_color="White", 
+                                          width=100,
+                                          height=25,
+                                          fg_color="#2cb6ad", 
+                                          hover_color="DarkGray",
+                                          border_width=1)
+        self.apply_button.grid(row=5, column=0, padx=5, pady=(30,10), sticky="s")
 
     def get(self):
         checked_checkboxes = []
@@ -44,16 +55,31 @@ class ButtonFrame(ctk.CTkFrame):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
+        self.configure(fg_color="transparent")
 
         self.app_instance = app_instance
+        
+        photo_image = tk.PhotoImage(file="gui/resources/play.png")
+        photo_image = photo_image.subsample(12)
 
-        self.start_button = ctk.CTkButton(self, text="Начать", command=self.app_instance.start_button_callbck,font=ctk.CTkFont(size=16))
+        self.start_button = ctk.CTkButton(self, 
+                                          text="",
+                                          image=photo_image,
+                                          command=self.app_instance.start_button_callbck,
+                                          font=ctk.CTkFont(size=14),
+                                          width=100,
+                                          height=25,
+                                          border_width=1)
         self.start_button.grid(row=0, column=0, padx=10, pady=10)
-        self.stop_button = ctk.CTkButton(self, text="Остановить", 
-                       command=self.app_instance.stop_button_callbck, 
-                       fg_color="Red",
-                       hover_color="DarkRed",
-                       font=ctk.CTkFont(size=16))
+        self.stop_button = ctk.CTkButton(self, 
+                                         text="Остановить", 
+                                         command=self.app_instance.stop_button_callbck, 
+                                         fg_color="Red",
+                                         hover_color="DarkRed",
+                                         font=ctk.CTkFont(size=14),
+                                         width=100,
+                                         height=25,
+                                         border_width=1)
         self.stop_button.grid(row=0, column=1, padx=10, pady=10)
 
 class LogsFrame(ctk.CTkFrame):
@@ -61,12 +87,13 @@ class LogsFrame(ctk.CTkFrame):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
         self.app_inst = app_instance
+        #self.configure(fg_color="transparent") 
 
-        self.label = ctk.CTkLabel(self, text="Логи", fg_color="LightSlateGray", text_color="white", corner_radius=6, font=ctk.CTkFont(size=18))
+        self.label = ctk.CTkLabel(self, text="Логи", fg_color="#2cc985", text_color="Black", corner_radius=6, font=ctk.CTkFont(size=16))
         self.label.grid(row=0, sticky="nsew", pady=10, padx=10)
 
-        self.tk_textbox = ctk.CTkTextbox(self, activate_scrollbars=True, width=550, height=280)
-        self.tk_textbox.grid(row=1, sticky="nsew", pady=0, padx=10)
+        self.tk_textbox = ctk.CTkTextbox(self, activate_scrollbars=True, width=560, height=280, border_color="#2cc985", border_width=2, font=ctk.CTkFont(size=12))
+        self.tk_textbox.grid(row=1, sticky="nsew", pady=2, padx=10)
         self.tk_textbox.insert("0.0", "")
 
         self.user_scrolled_up = False
@@ -75,12 +102,17 @@ class LogsFrame(ctk.CTkFrame):
         self.tk_textbox.bind("<KeyPress>", self.on_key_press)
 
         self.button_frame = ButtonFrame(self, app_instance=self.app_inst)
-        self.button_frame.configure(fg_color="#dbdbdb")
-        self.button_frame.grid(row=2, column=0)
+        self.button_frame.grid(row=2, column=0, sticky="w", padx=10)
     
-    def log_message(self, message):
+    def log_message(self, message, color, weight):
         self.tk_textbox.configure(state="normal")
-        self.tk_textbox.insert("end", message + "\n")
+
+        tag_name = f"{color}_{weight}"
+        if tag_name not in self.tk_textbox.tag_names():
+            self.tk_textbox.tag_config(tag_name, foreground=color)
+
+        self.tk_textbox.insert("end", message + "\n", tag_name)
+    
         self.tk_textbox.configure(state="disabled")
 
         if not self.user_scrolled_up:
@@ -107,9 +139,9 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1,weight=1)
         self.resizable(0,1)
         self.checkbox_frame = CheckboxFrame(master=self, title="Выбор сайтов",values=["Дром", "Мосавтошина", "Сайт 3", "Сайт 4"], app_instance=self)
-        self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsw")
+        self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         self.label_log = LogsFrame(self, app_instance=self)
-        self.label_log.grid(row=0, column=1, padx=10, pady=10, sticky="nsw")
+        self.label_log.grid(row=0, column=1, padx=10, pady=10, sticky="nesw")
 
         self.log_queue = queue.Queue()
         self.after(100, self.process_log_queue)
@@ -118,8 +150,13 @@ class App(ctk.CTk):
     def process_log_queue(self):
         try:
             while True:
-                message = self.log_queue.get_nowait()
-                self.label_log.log_message(message)
+                log_entry = self.log_queue.get_nowait()
+                print("Received log entry:", log_entry)
+                if isinstance(log_entry, tuple):
+                    message, color, weight = log_entry
+                    self.label_log.log_message(message, color, weight)
+                else:
+                    self.label_log.log_message(log_entry, "black", "normal")
         except queue.Empty:
             pass
         self.after(100, self.process_log_queue)
@@ -146,5 +183,7 @@ class App(ctk.CTk):
                                                   size='200x150',
                                                   center=False)
         else:
-            print("\nНастройки применены!\n")
-            print("Выбранные сайты:", self.checkbox_frame.get())
+
+            message = f"\nНастройки применены!\nВыбранные сайты:{self.checkbox_frame.get()}"
+            print(message)
+            self.log_queue.put((message, "LimeGreen", 'normal'))
