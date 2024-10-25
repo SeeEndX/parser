@@ -1,10 +1,11 @@
 import signal
 import parser_logic.checkpoint as ch
-import gui.views as v
+from gui import views as vi
 
 def main():
+    app = vi.App()
+    app.mainloop()
     signal.signal(signal.SIGINT, ch.signal_handler) 
-    v.init_window()
 
 if __name__ == "__main__":
     main()
