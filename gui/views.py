@@ -1,6 +1,8 @@
 import customtkinter as ctk
 from CustomTkinterMessagebox import CTkMessagebox as mb
 from parser_logic import logic
+import queue
+import threading
 
 class ToplevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text):
@@ -66,17 +68,33 @@ class LogsFrame(ctk.CTkFrame):
         self.tk_textbox = ctk.CTkTextbox(self, activate_scrollbars=True, width=550, height=280)
         self.tk_textbox.grid(row=1, sticky="nsew", pady=0, padx=10)
         self.tk_textbox.insert("0.0", "")
-        self.tk_textbox.configure(state="disabled")
+
+        self.user_scrolled_up = False
+
+        self.tk_textbox.bind("<MouseWheel>", self.on_mouse_wheel)
+        self.tk_textbox.bind("<KeyPress>", self.on_key_press)
 
         self.button_frame = ButtonFrame(self, app_instance=self.app_inst)
         self.button_frame.configure(fg_color="#dbdbdb")
         self.button_frame.grid(row=2, column=0)
     
     def log_message(self, message):
-        self.tk_textbox.configure(state="normal") 
+        self.tk_textbox.configure(state="normal")
         self.tk_textbox.insert("end", message + "\n")
-        self.tk_textbox.configure(state="disabled")  
-        self.tk_textbox.yview("end")
+        self.tk_textbox.configure(state="disabled")
+
+        if not self.user_scrolled_up:
+            self.tk_textbox.yview("end")
+
+    def on_mouse_wheel(self, event):
+        if event.delta < 0:
+            self.user_scrolled_up = False 
+        else:
+            self.user_scrolled_up = True  
+
+    def on_key_press(self, event):
+        if event.keysym in ("Up", "Down", "Prior", "Next"):
+            self.user_scrolled_up = True
 
 class App(ctk.CTk):
     def __init__(self):
@@ -93,12 +111,31 @@ class App(ctk.CTk):
         self.label_log = LogsFrame(self, app_instance=self)
         self.label_log.grid(row=0, column=1, padx=10, pady=10, sticky="nsw")
 
+        self.log_queue = queue.Queue()
+        self.after(100, self.process_log_queue)
+        self.is_running = False
+
+    def process_log_queue(self):
+        try:
+            while True:
+                message = self.log_queue.get_nowait()
+                self.label_log.log_message(message)
+        except queue.Empty:
+            pass
+        self.after(100, self.process_log_queue)
+
     def start_button_callbck(self):
-        print("Обработка началась...\n\n")
-        logic.processing()
+        if not self.is_running:
+            self.is_running = True
+            threading.Thread(target=self.run_processing, daemon=True).start()
+
+    def run_processing(self):
+        logic.processing(self.log_queue, self)
 
     def stop_button_callbck(self):
-        print("\nОбработка завершена.\n")
+        self.is_running = False
+        message = "\nОбработка завершена.\n"
+        print(message)
 
     def apply_button_callbck(self):
         if len(self.checkbox_frame.get())<1:

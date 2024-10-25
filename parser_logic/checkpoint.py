@@ -6,19 +6,30 @@ results = []
 
 RESULTS_FILE = 'files/описание_шин.xlsx'
 
-def signal_handler(sig, frame):
-    print("\nПолучен сигнал для завершения. Сохранение промежуточных результатов...")
-    save_results()
+def signal_handler(app_instance, sig, frame):
+    message = "\nПолучен сигнал для завершения. Сохранение промежуточных результатов..."
+    print(message)
+    app_instance.log_queue.put(message)
+    save_results(app_instance.log_queue)
     sys.exit(0)
 
-def save_results():
-    if results:
-        results_df = pd.DataFrame(results)
-        results_df.to_excel(RESULTS_FILE, index=False)
-        print(f"Промежуточные результаты успешно сохранены в {RESULTS_FILE}")
+def save_results(results, log_queue):
+    try:
+        if results:
+            results_df = pd.DataFrame(results)
+            results_df.to_excel(RESULTS_FILE, index=False)
+            message = f"Промежуточные результаты успешно сохранены в {RESULTS_FILE}"
+            print(message)
+            log_queue.put(message)
+    except Exception as e:
+        error_message = f"Ошибка при сохранении результатов: {e}"
+        print(error_message)
+        log_queue.put(error_message)
 
-def load_previous_results():
+def load_previous_results(log_queue):
     if os.path.exists(RESULTS_FILE):
-        print(f"Загрузка предыдущих результатов из {RESULTS_FILE}")
+        message = f"Загрузка предыдущих результатов из {RESULTS_FILE}"
+        print(message)
+        log_queue.put(message)
         return pd.read_excel(RESULTS_FILE).to_dict(orient='records')
     return []
