@@ -24,24 +24,15 @@ class CheckboxFrame(ctk.CTkFrame):
         self.app_instance = app_instance
 
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="#2cc985", text_color="Black", corner_radius=6, font=ctk.CTkFont(size=16))
-        self.title.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        self.title.grid(row=0, column=0, padx=10, pady=(10,5), sticky="ew")
 
         for i, value in enumerate(self.values):
             checkbox = ctk.CTkCheckBox(self, text=value, font=ctk.CTkFont(size=12))
-            checkbox.grid(row=i+1, column=0, padx=10, pady=(10, 0), sticky="ew")
+            checkbox.grid(row=i+1, column=0, padx=10, pady=(10, 10), sticky="ew")
             self.checkboxes.append(checkbox)
-        
-        self.apply_button = ctk.CTkButton(self, 
-                                          text="Применить", 
-                                          command=self.app_instance.apply_button_callbck, 
-                                          font=ctk.CTkFont(size=14), 
-                                          text_color="White", 
-                                          width=100,
-                                          height=25,
-                                          fg_color="#2cb6ad", 
-                                          hover_color="DarkGray",
-                                          border_width=1)
-        self.apply_button.grid(row=5, column=0, padx=5, pady=(30,10), sticky="s")
+
+        if "Дром" in self.values:
+            self.checkboxes[self.values.index("Дром")].select()
 
     def get(self):
         checked_checkboxes = []
@@ -69,7 +60,7 @@ class ButtonFrame(ctk.CTkFrame):
                                           font=ctk.CTkFont(size=14),
                                           width=100,
                                           height=25,
-                                          border_width=1)
+                                          border_width=2)
         self.start_button.grid(row=0, column=0, padx=10, pady=10)
         self.stop_button = ctk.CTkButton(self, 
                                          text="Остановить", 
@@ -79,7 +70,7 @@ class ButtonFrame(ctk.CTkFrame):
                                          font=ctk.CTkFont(size=14),
                                          width=100,
                                          height=25,
-                                         border_width=1)
+                                         border_width=2)
         self.stop_button.grid(row=0, column=1, padx=10, pady=10)
 
 class LogsFrame(ctk.CTkFrame):
@@ -145,7 +136,7 @@ class App(ctk.CTk):
 
         self.log_queue = queue.Queue()
         self.after(100, self.process_log_queue)
-        self.is_running = False
+        self.is_running = threading.Event()
 
     def process_log_queue(self):
         try:
@@ -162,21 +153,26 @@ class App(ctk.CTk):
         self.after(100, self.process_log_queue)
 
     def start_button_callbck(self):
-        if not self.is_running:
-            self.is_running = True
-            threading.Thread(target=self.run_processing, daemon=True).start()
+        selected_sites = self.checkbox_frame.get()
+        if not selected_sites:
+            mb.messagebox(title='Ошибка',
+                          text='Необходимо выбрать\nхотя бы 1 сайт!', 
+                          button_text='OK', 
+                          size='200x150',
+                          center=False)
+            return
+        if not self.is_running.is_set():
+            self.is_running.set()
+            threading.Thread(target=self.run_processing, args=(selected_sites,), daemon=True).start()
 
-    def run_processing(self):
-        logic.processing(self.log_queue, self)
+    def run_processing(self, selected_sites):
+        logic.processing(self.log_queue, self, selected_sites)
 
     def stop_button_callbck(self):
-        self.is_running = False
-        message = "\nОбработка завершена.\n"
-        print(message)
+        self.is_running.clear()
 
     def apply_button_callbck(self):
         if len(self.checkbox_frame.get())<1:
-            print("\nНеобходимо выбрать хотя бы 1 сайт!\n")
             self.toplevel_window = mb.messagebox(title='Ошибка',
                                                   text='Необходимо выбрать\nхотя бы 1 сайт!', 
                                                   button_text='OK', 
