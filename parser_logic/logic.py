@@ -167,13 +167,19 @@ def get_tyre_description_mosautoshina(brand, model, proxies, app_instance):
         return 'Модель не найдена'
     
 def get_full_description_autoshini(soup, model):
-    description_div = soup.find('div', class_='full-description')
+    description_div = soup.find('div', class_='tab prodinfo lineheight visible')
     
     if not description_div:
         return 'Описание не найдено для модели'
     
-    description_text = description_div.get_text(strip=True)
-    return description_text
+    description_text = description_div.get_text(strip=True, separator='\n')
+
+    unwanted_start = description_text.find('Информация о ')
+    
+    if unwanted_start != -1:
+        description_text = description_text[:unwanted_start].strip()
+
+    return description_text if description_text else 'Описание не найдено для модели'
 
 def find_best_match_autoshini(model, tyre_items, app_instance):
     model_words = split_model(model)
@@ -181,47 +187,53 @@ def find_best_match_autoshini(model, tyre_items, app_instance):
     highest_count = 0
 
     for item in tyre_items:
-        tyre_name = clean_text(item.select_one('div.ellipsis').get_text(strip=True))
-        tyre_words = split_model(tyre_name)
+        tyre_name_element = item.find('a', class_='snapshot-catname')
+        if tyre_name_element:
+            tyre_name = clean_text(tyre_name_element.get_text(strip=True))
+            tyre_words = split_model(tyre_name)
 
-        matches = sum(1 for word in model_words if word in tyre_words)
+            matches = sum(1 for word in model_words if word in tyre_words)
 
-        if matches > highest_count:
-            highest_count = matches
-            link = item.find('a', class_='cat')
-            if link and 'href' in link.attrs:
-                best_match = 'https://autoshini.ru' + link['href']
-                message = f"Найдена модель: {tyre_name} с {matches} совпадениями."
-                print(message)
-                app_instance.log_queue.put((message, "LimeGreen", 'normal'))
+            if matches > highest_count:
+                highest_count = matches
+                link = tyre_name_element
+                if link and 'href' in link.attrs:
+                    best_match = 'https://autoshini.ru' + link['href']
+                    message = f"Найдена модель: {tyre_name} с {matches} совпадениями."
+                    print(message)
+                    app_instance.log_queue.put((message, "LimeGreen", 'normal'))
 
     return best_match if highest_count >= 1 else None
 
+
 def get_tyre_description_autoshini(brand, model, proxies, app_instance):
     if not model:
-        return "Обнаружено отсутствие модели"
+        return {"description": "Обнаружено отсутствие модели"}
 
     brand_lower = brand.lower()
-    search_url = f'https://autoshini.ru/catalog/tyres/{brand_lower}/'
+    search_url = f'https://autoshini.ru/shop/shiny-{brand_lower}/'
     soup = parse_with_requests(search_url, proxies, app_instance)
 
     if isinstance(soup, str):
         print(soup)
-        return soup
+        return {"description": soup}
 
-    tyre_items = soup.find_all('div', class_='brand-cat')
+    tyre_items = soup.find_all('div', class_='snapshot-item')
     model_url = find_best_match_autoshini(model, tyre_items, app_instance)
 
     if model_url:
         model_description_soup = parse_with_requests(model_url, proxies, app_instance)
         if isinstance(model_description_soup, str):
             print(model_description_soup)
-            return model_description_soup
+            return {"description": model_description_soup}
 
         full_description = get_full_description_autoshini(model_description_soup, model)
-        return full_description
+        return {
+            'model_name': model,
+            'description': full_description
+        }
     else:
-        return 'Модель не найдена'
+        return {"description": 'Модель не найдена'}
 
 def parse_xml(xml_file):
     tree = ET.parse(xml_file)
@@ -252,12 +264,14 @@ def processing(log_queue, app_instance, selected_sites):
     tires = parse_xml('files/tires.xml')
     proxies = load_proxies('files/proxies.txt')
 
+    description_drom = None
+
     for tire in tires:
         if not app_instance.is_running:
             message="Обработка остановлена."
             log_queue.put((message, "DarkOrange", 'normal'))
             message = "\nВсе данные успешно обработаны и сохранены.\n_______________________________________________________________________\n"
-            log_queue.put((message, "DarkOrange", 'normal'))
+            log_queue.put((message, "LimeGreen", 'normal'))
             break
         
         brand_full = tire['brand']
@@ -274,42 +288,37 @@ def processing(log_queue, app_instance, selected_sites):
             message = f"Шина {brand} {model} уже обработана, пропускаем..."
             log_queue.put((message, "DarkOrange", 'normal'))
             continue
+
+        description_drom = ''
+        description_mosautoshina = ''
+        description_autoshini = ''
+
         if "Дром" in selected_sites:
             description_drom = get_tyre_description_drom(brand, model, proxies, app_instance)
             message = f"Описание с drom.ru для {brand} {model}: {description_drom}"
             log_queue.put((message, "Black", 'normal'))
-            
-            results.append({
-                'Название шины': f"{brand} {model}",
-                'Описание drom.ru': description_drom,
-                'Описание mosautoshina.ru': ''
-            })
-            save_results(results, log_queue)
         
         if "Мосавтошина" in selected_sites:
             description_mosautoshina = get_tyre_description_mosautoshina(brand, model, proxies, app_instance)
             message = f"Описание с mosautoshina.ru для {brand} {model}: {description_mosautoshina}"
             log_queue.put((message, "Black", 'normal'))
 
-            for result in results:
-                if result['Название шины'] == f"{brand} {model}":
-                    result['Описание mosautoshina.ru'] = description_mosautoshina
-
-            save_results(results, log_queue)
-
-        if "АвтоШини" in selected_sites:
+        if "Автошины" in selected_sites:
             description_autoshini = get_tyre_description_autoshini(brand, model, proxies, app_instance)
-            message = f"Описание с autoshini.ru для {brand} {model}: {description_autoshini}"
+            message = f"Описание с autoshini.ru для {brand} {model}: {description_autoshini['description']}"
             log_queue.put((message, "Black", 'normal'))
 
-            for result in results:
-                if result['Название шины'] == f"{brand} {model}":
-                    result['Описание autoshini.ru'] = description_autoshini
-
-            save_results(results, log_queue)
+        results.append({
+            'Название шины': f"{brand} {model}",
+            'Описание drom.ru': description_drom,
+            'Описание mosautoshina.ru': description_mosautoshina,
+            'Описание autoshini.ru': description_autoshini['description'] if isinstance(description_autoshini, dict) else description_autoshini,
+        })
+        
+        save_results(results, log_queue)
         
         if not app_instance.is_running.is_set(): 
             log_queue.put(("Обработка остановлена.\n", "DarkOrange", 'normal'))
             message = "\nВсе данные успешно обработаны и сохранены.\n_______________________________________________________________________\n"
-            log_queue.put((message, "DarkOrange", 'normal'))
+            log_queue.put((message, "LimeGreen", 'normal'))
             break

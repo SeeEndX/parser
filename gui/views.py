@@ -129,7 +129,11 @@ class App(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1,weight=1)
         self.resizable(0,1)
-        self.checkbox_frame = CheckboxFrame(master=self, title="Выбор сайтов",values=["Дром", "Мосавтошина", "Сайт 3", "Сайт 4"], app_instance=self)
+        self.checkbox_frame = CheckboxFrame(master=self, 
+                                            title="Выбор сайтов",
+                                            values=["Дром", "Мосавтошина",
+                                                     "Автошины", "Сайт 4"], 
+                                            app_instance=self)
         self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         self.label_log = LogsFrame(self, app_instance=self)
         self.label_log.grid(row=0, column=1, padx=10, pady=10, sticky="nesw")
