@@ -205,7 +205,6 @@ def find_best_match_autoshini(model, tyre_items, app_instance):
 
     return best_match if highest_count >= 1 else None
 
-
 def get_tyre_description_autoshini(brand, model, proxies, app_instance):
     if not model:
         return {"description": "Обнаружено отсутствие модели"}
@@ -259,20 +258,14 @@ def find_best_match_4tochki(model, tyre_items, app_inst):
             img = link.find('img')
             if img and img.has_attr('alt'):
                 tyre_name = clean_text(img['alt'])
-                print(f"Сравнение модели: {model} с именем шины: {tyre_name}") 
                 tyre_words = split_model(tyre_name)
-                print(f"{tyre_words}")
                 matches = sum(1 for word in model_words if word in tyre_words)
                 if matches > highest_count:
                     highest_count = matches
                     best_match = 'https://www.4tochki.ru'+ link['href']+'#pills-description-tab'
-                    print(f"Найдена подходящая модель: {tyre_name} с {matches} совпадениями")
-            else: 
-                message = "Изображение не содержит alt атрибута или его нет" 
-                app_inst.log_queue.put((message, "DarkRed", 'normal')) 
-        else: 
-            message = "Ссылка не найдена в элементе" 
-            app_inst.log_queue.put((message, "DarkRed", 'normal'))
+                    message = f"Найдена модель: {tyre_name} с {matches} совпадениями."
+                    print(message)
+                    app_inst.log_queue.put((message, "LimeGreen", 'normal'))
     return best_match if highest_count >= 1 else None
 
 def get_tyre_description_4tochki(brand, model, proxies, app_instance): 
@@ -290,8 +283,6 @@ def get_tyre_description_4tochki(brand, model, proxies, app_instance):
         if isinstance(model_description_soup, str):
             return model_description_soup
         full_description = get_full_description_4tochki(model_description_soup)
-        message = f"Полное описание: {full_description}"
-        app_instance.log_queue.put((message, "DarkRed", 'normal'))
         return full_description
     else:
         print(f"Модель {model} не найдена на сайте 4tochki") 
