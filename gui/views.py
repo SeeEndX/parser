@@ -23,6 +23,9 @@ class CheckboxFrame(ctk.CTkFrame):
         self.checkboxes = []
         self.app_instance = app_instance
 
+        self.min_width = 300
+        self.max_width = 300
+        self.config
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="#2cc985", text_color="Black", corner_radius=6, font=ctk.CTkFont(size=16))
         self.title.grid(row=0, column=0, padx=10, pady=(10,5), sticky="ew")
 
@@ -50,33 +53,36 @@ class ButtonFrame(ctk.CTkFrame):
 
         self.app_instance = app_instance
         
-        photo_image = tk.PhotoImage(file="gui/resources/play.png")
-        photo_image = photo_image.subsample(12)
+        self.photo_image = tk.PhotoImage(file="gui/resources/play.png")
+        self.photo_image = self.photo_image.subsample(24)
+
+        self.photo_image1 = tk.PhotoImage(file="gui/resources/pause.png")
+        self.photo_image1 = self.photo_image1.subsample(24)
 
         self.start_button = ctk.CTkButton(self, 
                                           text="",
-                                          image=photo_image,
+                                          image=self.photo_image,
                                           command=self.app_instance.start_button_callbck,
                                           font=ctk.CTkFont(size=14),
-                                          width=100,
-                                          height=25,
-                                          border_width=2)
+                                          width=self.photo_image.width()+15,
+                                          height=self.photo_image.height()+5)
         self.start_button.grid(row=0, column=0, padx=10, pady=10)
         self.stop_button = ctk.CTkButton(self, 
-                                         text="Остановить", 
-                                         command=self.app_instance.stop_button_callbck, 
+                                         text="", 
+                                         image=self.photo_image1,
                                          fg_color="Red",
                                          hover_color="DarkRed",
+                                         command=self.app_instance.stop_button_callbck, 
                                          font=ctk.CTkFont(size=14),
-                                         width=100,
-                                         height=25,
-                                         border_width=2)
+                                         width=15+self.photo_image1.width(),
+                                         height=self.photo_image1.height()+5)
         self.stop_button.grid(row=0, column=1, padx=10, pady=10)
 
 class LogsFrame(ctk.CTkFrame):
     def __init__(self, master, app_instance):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
         self.app_inst = app_instance
         #self.configure(fg_color="transparent") 
 
@@ -125,10 +131,12 @@ class App(ctk.CTk):
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
         self.geometry("800x400")
+        self.minsize(800, 400)
         self.title("Парсер шин")
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(1,weight=1)
-        self.resizable(0,1)
+        self.grid_columnconfigure(0,weight=1)
+        self.grid_columnconfigure(1,weight=2)
+        self.resizable(1,1)
         self.checkbox_frame = CheckboxFrame(master=self, 
                                             title="Выбор сайтов",
                                             values=["Дром", "Мосавтошина",
