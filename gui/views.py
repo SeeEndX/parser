@@ -132,7 +132,7 @@ class App(ctk.CTk):
         self.checkbox_frame = CheckboxFrame(master=self, 
                                             title="Выбор сайтов",
                                             values=["Дром", "Мосавтошина",
-                                                     "Автошины", "Сайт 4"], 
+                                                     "Автошины", "4 точки"], 
                                             app_instance=self)
         self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         self.label_log = LogsFrame(self, app_instance=self)

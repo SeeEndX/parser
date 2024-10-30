@@ -235,6 +235,75 @@ def get_tyre_description_autoshini(brand, model, proxies, app_instance):
     else:
         return {"description": 'Модель не найдена'}
 
+def get_full_description_4tochki(soup):
+    description_div = soup.find('div', class_='product-description')
+    
+    if not description_div:
+        return 'Описание не найдено для модели'
+    
+    description_text = description_div.get_text(strip=True, separator='\n')
+    return description_text if description_text else 'Описание не найдено для модели'
+
+
+def find_best_match_4tochki(model, tyre_items, app_instance):
+    model_words = split_model(model)
+    best_match = None
+    highest_count = 0
+
+    for item in tyre_items:
+        tyre_name_element = item.find('a', class_='d-flex align-items-center mt-2')
+        if tyre_name_element:
+            tyre_name = clean_text(tyre_name_element.get_text(strip=True))
+
+            brand_element = item.find(itemprop="brand")
+            brand_name = brand_element.find('meta', itemprop="name")['content'] if brand_element else ""
+
+            full_tyre_name = f"{brand_name} {tyre_name}".strip() if brand_name else tyre_name
+            tyre_words = split_model(full_tyre_name)
+
+            matches = sum(1 for word in model_words if word in tyre_words)
+
+            if matches > highest_count:
+                highest_count = matches
+                if 'href' in tyre_name_element.attrs:
+                    best_match = 'https://www.4tochki.ru' + tyre_name_element['href']
+                    message = f"Найдена модель: {full_tyre_name} с {matches} совпадениями."
+                    print(message)
+                    app_instance.log_queue.put((message, "LimeGreen", 'normal'))
+
+    return best_match if highest_count >= 1 else None
+
+
+
+def get_tyre_description_4tochki(brand, model, proxies, app_instance):
+    if not model:
+        return {"description": "Обнаружено отсутствие модели"}
+
+    brand_lower = brand.lower()
+    brand_url = f'https://4tochki.ru/catalog/tyres/{brand_lower}/'
+    soup = parse_with_requests(brand_url, proxies, app_instance)
+
+    if isinstance(soup, str):
+        print(soup)
+        return {"description": soup}
+
+    tyre_items = soup.find_all('div', class_='product-item')
+    model_url = find_best_match_4tochki(model, tyre_items, app_instance)
+
+    if model_url:
+        model_description_soup = parse_with_requests(model_url, proxies, app_instance)
+        if isinstance(model_description_soup, str):
+            print(model_description_soup)
+            return {"description": model_description_soup}
+
+        full_description = get_full_description_4tochki(model_description_soup)
+        return {
+            'model_name': model,
+            'description': full_description
+        }
+    else:
+        return {"description": 'Модель не найдена'}
+
 def parse_xml(xml_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
@@ -292,6 +361,7 @@ def processing(log_queue, app_instance, selected_sites):
         description_drom = ''
         description_mosautoshina = ''
         description_autoshini = ''
+        description_4tochki = ''
 
         if "Дром" in selected_sites:
             description_drom = get_tyre_description_drom(brand, model, proxies, app_instance)
@@ -308,11 +378,22 @@ def processing(log_queue, app_instance, selected_sites):
             message = f"Описание с autoshini.ru для {brand} {model}: {description_autoshini['description']}"
             log_queue.put((message, "Black", 'normal'))
 
+        if "4 точки" in selected_sites:
+            description_4tochki = get_tyre_description_4tochki(brand, model, proxies, app_instance)
+
+            if isinstance(description_4tochki, str):
+                message = f"Описание с 4tochki.ru для {brand} {model}: {description_4tochki}"
+            else:
+                message = f"Не удалось получить описание с 4tochki.ru для {brand} {model}: {description_4tochki}"
+            
+            log_queue.put((message, "Black", 'normal'))
+
         results.append({
             'Название шины': f"{brand} {model}",
             'Описание drom.ru': description_drom,
             'Описание mosautoshina.ru': description_mosautoshina,
             'Описание autoshini.ru': description_autoshini['description'] if isinstance(description_autoshini, dict) else description_autoshini,
+            'Описание 4tochki.ru': description_4tochki
         })
         
         save_results(results, log_queue)
