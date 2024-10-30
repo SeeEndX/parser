@@ -236,73 +236,67 @@ def get_tyre_description_autoshini(brand, model, proxies, app_instance):
         return {"description": 'Модель не найдена'}
 
 def get_full_description_4tochki(soup):
-    description_div = soup.find('div', class_='product-description')
+    description_tab = soup.find('div', id='pills-description')
+    if not description_tab:
+        return 'Описание не найдено для модели'
     
+    description_div = description_tab.find('div', class_='mt-4')
     if not description_div:
         return 'Описание не найдено для модели'
     
-    description_text = description_div.get_text(strip=True, separator='\n')
-    return description_text if description_text else 'Описание не найдено для модели'
+    description_text = description_div.get_text(strip=True, separator=' ')
+    description_text = description_text.replace('\n', ' ').replace('\r', ' ').strip()
+    
+    return description_text
 
-
-def find_best_match_4tochki(model, tyre_items, app_instance):
+def find_best_match_4tochki(model, tyre_items, app_inst):
     model_words = split_model(model)
     best_match = None
     highest_count = 0
-
     for item in tyre_items:
-        tyre_name_element = item.find('a', class_='d-flex align-items-center mt-2')
-        if tyre_name_element:
-            tyre_name = clean_text(tyre_name_element.get_text(strip=True))
-
-            brand_element = item.find(itemprop="brand")
-            brand_name = brand_element.find('meta', itemprop="name")['content'] if brand_element else ""
-
-            full_tyre_name = f"{brand_name} {tyre_name}".strip() if brand_name else tyre_name
-            tyre_words = split_model(full_tyre_name)
-
-            matches = sum(1 for word in model_words if word in tyre_words)
-
-            if matches > highest_count:
-                highest_count = matches
-                if 'href' in tyre_name_element.attrs:
-                    best_match = 'https://www.4tochki.ru' + tyre_name_element['href']
-                    message = f"Найдена модель: {full_tyre_name} с {matches} совпадениями."
-                    print(message)
-                    app_instance.log_queue.put((message, "LimeGreen", 'normal'))
-
+        link = item.select_one('a.no-visited.item__link.image-parent-200')
+        if link:
+            img = link.find('img')
+            if img and img.has_attr('alt'):
+                tyre_name = clean_text(img['alt'])
+                print(f"Сравнение модели: {model} с именем шины: {tyre_name}") 
+                tyre_words = split_model(tyre_name)
+                print(f"{tyre_words}")
+                matches = sum(1 for word in model_words if word in tyre_words)
+                if matches > highest_count:
+                    highest_count = matches
+                    best_match = 'https://www.4tochki.ru'+ link['href']+'#pills-description-tab'
+                    print(f"Найдена подходящая модель: {tyre_name} с {matches} совпадениями")
+            else: 
+                message = "Изображение не содержит alt атрибута или его нет" 
+                app_inst.log_queue.put((message, "DarkRed", 'normal')) 
+        else: 
+            message = "Ссылка не найдена в элементе" 
+            app_inst.log_queue.put((message, "DarkRed", 'normal'))
     return best_match if highest_count >= 1 else None
 
-
-
-def get_tyre_description_4tochki(brand, model, proxies, app_instance):
+def get_tyre_description_4tochki(brand, model, proxies, app_instance): 
     if not model:
-        return {"description": "Обнаружено отсутствие модели"}
-
+        return "Обнаружено отсутствие модели"
     brand_lower = brand.lower()
-    brand_url = f'https://4tochki.ru/catalog/tyres/{brand_lower}/'
-    soup = parse_with_requests(brand_url, proxies, app_instance)
-
+    search_url = f'https://www.4tochki.ru/catalog/tyres/{brand_lower}/'
+    soup = parse_with_requests(search_url, proxies, app_instance)  
     if isinstance(soup, str):
-        print(soup)
-        return {"description": soup}
-
-    tyre_items = soup.find_all('div', class_='product-item')
+        return soup
+    tyre_items = soup.find_all('div', class_='d-flex flex-column align-items-center')
     model_url = find_best_match_4tochki(model, tyre_items, app_instance)
-
     if model_url:
-        model_description_soup = parse_with_requests(model_url, proxies, app_instance)
+        model_description_soup = parse_with_requests(model_url, proxies, app_instance) 
         if isinstance(model_description_soup, str):
-            print(model_description_soup)
-            return {"description": model_description_soup}
-
+            return model_description_soup
         full_description = get_full_description_4tochki(model_description_soup)
-        return {
-            'model_name': model,
-            'description': full_description
-        }
+        message = f"Полное описание: {full_description}"
+        app_instance.log_queue.put((message, "DarkRed", 'normal'))
+        return full_description
     else:
-        return {"description": 'Модель не найдена'}
+        print(f"Модель {model} не найдена на сайте 4tochki") 
+        return 'Модель не найдена'
+
 
 def parse_xml(xml_file):
     tree = ET.parse(xml_file)
@@ -379,6 +373,7 @@ def processing(log_queue, app_instance, selected_sites):
             log_queue.put((message, "Black", 'normal'))
 
         if "4 точки" in selected_sites:
+            print(f"Запуск обработки для 4tochki для бренда {brand} и модели {model}")
             description_4tochki = get_tyre_description_4tochki(brand, model, proxies, app_instance)
 
             if isinstance(description_4tochki, str):
