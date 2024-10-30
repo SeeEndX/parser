@@ -4,6 +4,7 @@ import random
 import re
 import xml.etree.ElementTree as ET
 from .checkpoint import *
+import time
 
 def load_proxies(file_path):
     with open(file_path, 'r') as f:
@@ -18,21 +19,27 @@ def get_random_proxy(proxies):
         'https': f'http://{user}:{password}@{ip}:{port}'
     }
 
-def parse_with_requests(url, proxies, app_instance):
+def parse_with_requests(url, proxies, app_instance, retries=3):
     proxy = get_random_proxy(proxies)
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0"
     }
-    message = f"\nПарсинг сайта: {url} с прокси: {proxy}\n"
-    print(message)
-    app_instance.log_queue.put((message, "Black", 'normal'))
+    for attempt in range(retries):
+        message = f"\nПарсинг сайта: {url} с прокси: {proxy} (Попытка {attempt + 1})\n"
+        print(message)
+        app_instance.log_queue.put((message, "Black", 'normal'))
+        try:
+            response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
+            response.raise_for_status()
+            return BeautifulSoup(response.content, 'html.parser')
+        except requests.exceptions.RequestException as e:
+            message = f"Ошибка при парсинге: {e} (Попытка {attempt + 1})"
+            print(message)
+            app_instance.log_queue.put((message, "DarkRed", 'normal'))
+            if attempt == retries - 1:
+                return f"Ошибка при парсинге: {e}"
+        time.sleep(2)
 
-    try:
-        response = requests.get(url, headers=headers, proxies=proxy, timeout=30)
-        response.raise_for_status()
-        return BeautifulSoup(response.content, 'html.parser')
-    except requests.exceptions.RequestException as e:
-        return f"Ошибка при парсинге: {e}"
 
 def clean_text(text):
     return re.sub(r'[^\w\s]', '', text.lower()).strip()
