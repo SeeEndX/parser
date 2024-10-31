@@ -5,6 +5,16 @@ import re
 import xml.etree.ElementTree as ET
 from .checkpoint import *
 import time
+import os
+import sys
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 def load_proxies(file_path):
     with open(file_path, 'r') as f:
@@ -314,6 +324,9 @@ def already_processed(brand, model, previous_results):
             return True
     return False
 
+xml_file_path = resource_path('files/tires.xml')
+prox_file_path = resource_path('files/proxies.txt')
+
 def processing(log_queue, app_instance, selected_sites):
     log_queue.put(("Процесс парсинга начался...\n", "Green", 'bold'))
     previous_results = load_previous_results(log_queue)
@@ -322,8 +335,8 @@ def processing(log_queue, app_instance, selected_sites):
     if previous_results:
         results = previous_results
     
-    tires = parse_xml('files/tires.xml')
-    proxies = load_proxies('files/proxies.txt')
+    tires = parse_xml(xml_file_path)
+    proxies = load_proxies(prox_file_path)
 
     description_drom = None
 

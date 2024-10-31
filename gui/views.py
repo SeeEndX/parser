@@ -3,7 +3,16 @@ from CustomTkinterMessagebox import CTkMessagebox as mb
 from parser_logic import logic
 import queue
 import threading
-import tkinter as tk
+from PIL import Image
+import os, sys 
+
+def resource_path(relative_path): 
+    try: 
+        base_path = sys._MEIPASS 
+    except Exception: 
+        base_path = os.path.abspath(".") 
+        
+    return os.path.join(base_path, relative_path)
 
 class ToplevelWindow(ctk.CTkToplevel):
     def __init__(self, master, text):
@@ -22,9 +31,6 @@ class CheckboxFrame(ctk.CTkFrame):
 
         self.checkboxes = []
         self.app_instance = app_instance
-
-        self.min_width = 300
-        self.max_width = 300
         self.config
         self.title = ctk.CTkLabel(self, text=self.title, fg_color="#2cc985", text_color="Black", corner_radius=6, font=ctk.CTkFont(size=16))
         self.title.grid(row=0, column=0, padx=10, pady=(10,5), sticky="ew")
@@ -43,7 +49,7 @@ class CheckboxFrame(ctk.CTkFrame):
             if checkbox.get() == 1:
                 checked_checkboxes.append(checkbox.cget("text"))
         return checked_checkboxes
-    
+
 class ButtonFrame(ctk.CTkFrame):
     def __init__(self, master, app_instance):
         super().__init__(master)
@@ -53,29 +59,31 @@ class ButtonFrame(ctk.CTkFrame):
 
         self.app_instance = app_instance
         
-        self.photo_image = tk.PhotoImage(file="gui/resources/play.png")
-        self.photo_image = self.photo_image.subsample(24)
-
-        self.photo_image1 = tk.PhotoImage(file="gui/resources/pause.png")
-        self.photo_image1 = self.photo_image1.subsample(24)
+        image = ctk.CTkImage(light_image=Image.open(resource_path("gui/resources/play.png")),
+                                dark_image=Image.open(resource_path("gui/resources/play.png")),
+                                  size=(20, 20))
+        
+        image1 = ctk.CTkImage(light_image=Image.open(resource_path("gui/resources/pause.png")),
+                                dark_image=Image.open(resource_path("gui/resources/pause.png")),
+                                  size=(20, 20))
 
         self.start_button = ctk.CTkButton(self, 
                                           text="",
-                                          image=self.photo_image,
+                                          image=image,
                                           command=self.app_instance.start_button_callbck,
                                           font=ctk.CTkFont(size=14),
-                                          width=self.photo_image.width()+15,
-                                          height=self.photo_image.height()+5)
+                                          width=25,
+                                          height=25)
         self.start_button.grid(row=0, column=0, padx=10, pady=10)
         self.stop_button = ctk.CTkButton(self, 
                                          text="", 
-                                         image=self.photo_image1,
+                                         image=image1,
                                          fg_color="Red",
                                          hover_color="DarkRed",
                                          command=self.app_instance.stop_button_callbck, 
                                          font=ctk.CTkFont(size=14),
-                                         width=15+self.photo_image1.width(),
-                                         height=self.photo_image1.height()+5)
+                                         width=25,
+                                         height=25)
         self.stop_button.grid(row=0, column=1, padx=10, pady=10)
 
 class LogsFrame(ctk.CTkFrame):
@@ -134,15 +142,15 @@ class App(ctk.CTk):
         self.minsize(800, 400)
         self.title("Парсер шин")
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0,weight=1)
-        self.grid_columnconfigure(1,weight=2)
+        self.grid_columnconfigure(0,minsize=150, weight=1)
+        self.grid_columnconfigure(1,weight=5)
         self.resizable(1,1)
         self.checkbox_frame = CheckboxFrame(master=self, 
                                             title="Выбор сайтов",
                                             values=["Дром", "Мосавтошина",
                                                      "Автошины", "4 точки"], 
                                             app_instance=self)
-        self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        self.checkbox_frame.grid(row=0, column=0, padx=10, pady=10, sticky="new")
         self.label_log = LogsFrame(self, app_instance=self)
         self.label_log.grid(row=0, column=1, padx=10, pady=10, sticky="nesw")
 
